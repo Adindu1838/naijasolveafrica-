@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NaijaSolve Africa — Pan-African Cloud Directory &amp; Live Map</title>
+
+  <!-- Leaflet CSS for Pan-African Live Map -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    crossorigin=""
+  />
+
+  <style>
+    :root {
+      --bg-dark: #06130d;
+      --bg-card: #0c1f16;
+      --bg-card-hover: #122d20;
+      --green-primary: #00a859;
+      --green-bright: #16d67a;
+      --green-soft: rgba(0, 168, 89, 0.14);
+      --gold-accent: #f4b400;
+      --red-sos: #e53935;
+      --text-main: #f3faf6;
+      --text-muted: #9eb8aa;
+      --border-subtle: rgba(255, 255, 255, 0.09);
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: radial-gradient(circle at top right, #0e2b1d 0%, var(--bg-dark) 55%);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.5;
+      padding-bottom: 56px;
+    }
+
+    .container {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* Top Header */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background: rgba(6, 19, 13, 0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 14px 0;
+    }
+
+    .header-inner {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 11px;
+      background: linear-gradient(135deg, var(--green-primary), var(--green-bright));
+      color: #04120b;
+      font-weight: 800;
+      font-size: 1.1rem;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    .brand h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .brand p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+    }
+
+    button,
+    .btn {
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-radius: 10px;
+      padding: 9px 14px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      text-decoration: none;
+      transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+
+    button:active,
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--green-primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--green-bright);
+      color: #04120b;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background: var(--bg-card);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+
+    .btn-sos {
+      background: var(--red-sos);
+      color: #ffffff;
+    }
+
+    .btn-sos:hover {
+      background: #ff4d49;
+    }
+
+    .btn-gold {
+      background: var(--gold-accent);
+      color: #161100;
+    }
+
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      border-radius: 8px;
+    }
+
+    /* Hero & Status Bar */
+    .hero {
+      padding: 24px 0 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .hero-copy h2 {
+      font-size: clamp(1.4rem, 3vw, 1.95rem);
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    .hero-copy h2 span {
+      color: var(--green-bright);
+    }
+
+    .hero-copy p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      max-width: 640px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--gold-accent);
+    }
+
+    .status-dot.online {
+      background: var(--green-bright);
+    }
+
+    /* Filter Toolbar */
+    .toolbar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin: 14px 0 20px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+      gap: 10px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      background: #07160f;
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      outline: none;
+      border-color: var(--green-bright);
+    }
+
+    /* Live Map Section */
+    .map-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+
+    .map-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .map-header h3 {
+      font-size: 0.98rem;
+      font-weight: 700;
+    }
+
+    #map {
+      height: 330px;
+      width: 100%;
+      background: #091a12;
+    }
+
+    /* Directory Grid */
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+
+    .section-title h3 {
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .count-label {
+      font-size: 0.84rem;
+      color: var(--text-muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    .card:hover {
+      background: var(--bg-card-hover);
+      border-color: rgba(22, 214, 122, 0.35);
+    }
+
+    .card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .card-title {
+      font-size: 1.02rem;
+      font-weight: 700;
+    }
+
+    .card-meta {
+      font-size: 0.83rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .badge-verified {
+      background: var(--green-soft);
+      color: var(--green-bright);
+      border: 1px solid rgba(22, 214, 122, 0.35);
+    }
+
+    .badge-featured {
+      background: rgba(244, 180, 0, 0.16);
+      color: var(--gold-accent);
+      border: 1px solid rgba(244, 180, 0, 0.4);
+    }
+
+    .card-desc {
+      font-size: 0.87rem;
+      color: #d6e6dd;
+    }
+
+    .card-specs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .admin-controls {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    body.admin-mode .admin-controls {
+      display: flex;
+    }
+
+    /* Boost / Paystack Box inside Add Modal */
+    .boost-box {
+      grid-column: 1 / -1;
+      background: rgba(0, 168, 89, 0.08);
+      border: 1px solid rgba(22, 214, 122, 0.25);
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 4px;
+    }
+
+    .boost-box h4 {
+      font-size: 0.88rem;
+      color: var(--green-bright);
+      margin-bottom: 4px;
+    }
+
+    .boost-box p {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .boost-status {
+      font-size: 0.78rem;
+      color: var(--gold-accent);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 2000;
+      background: rgba(0, 0, 0, 0.74);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal {
+      width: 100%;
+      max-width: 540px;
+      max-height: 90vh;
+      overflow-y: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .modal-header h3 {
+      font-size: 1.05rem;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .form-full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.86rem;
+    }
+
+    .checkbox-row input {
+      width: auto;
+    }
+
+    .modal-footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 36px 16px;
+      background: var(--bg-card);
+      border: 1px dashed var(--border-subtle);
+      border-radius: var(--radius);
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 560px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container header-inner">
+      <div class="brand">
+        <div class="brand-badge">NS</div>
+        <div>
+          <h1>NaijaSolve Africa</h1>
+          <p>Verified Contacts, Live Map &amp; Emergency SOS</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn-primary" id="openAddBtn">+ List Service</button>
+        <button class="btn-sos" id="openSosBtn">Emergency SOS</button>
+        <button class="btn-outline" id="adminToggleBtn">Admin</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <div class="hero-copy">
+        <h2>Trusted Pan-African <span>Service Directory</span></h2>
+        <p>Find verified artisans, responders, and essential providers across Africa—connected in real time to Supabase.</p>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot" id="dbDot"></span>
+        <span id="dbStatusText">Connecting to Supabase...</span>
+      </div>
+    </section>
+
+    <!-- Search & Filters -->
+    <section class="toolbar" aria-label="Directory filters">
+      <input type="search" id="searchInput" placeholder="Search name, trade, or area..." />
+      <select id="countryFilter">
+        <option value="">All Countries</option>
+        <option value="Nigeria">Nigeria</option>
+        <option value="Ghana">Ghana</option>
+        <option value="Kenya">Kenya</option>
+        <option value="South Africa">South Africa</option>
+        <option value="Rwanda">Rwanda</option>
+        <option value="Ethiopia">Ethiopia</option>
+        <option value="Tanzania">Tanzania</option>
+        <option value="Uganda">Uganda</option>
+        <option value="Egypt">Egypt</option>
+        <option value="Morocco">Morocco</option>
+        <option value="Senegal">Senegal</option>
+        <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+        <option value="Botswana">Botswana</option>
+        <option value="Zambia">Zambia</option>
+        <option value="Cameroon">Cameroon</option>
+      </select>
+      <select id="tradeFilter">
+        <option value="">All Trades &amp; Services</option>
+        <option value="Electrician">Electrician</option>
+        <option value="Plumber">Plumber</option>
+        <option value="Solar & Inverter">Solar &amp; Inverter</option>
+        <option value="Generator & AC Repair">Generator &amp; AC Repair</option>
+        <option value="Emergency & Medical">Emergency &amp; Medical</option>
+        <option value="Health & Pharmacy">Health &amp; Pharmacy</option>
+        <option value="Security & Towing">Security &amp; Towing</option>
+        <option value="Logistics & Dispatch">Logistics &amp; Dispatch</option>
+        <option value="Mechanic">Mechanic</option>
+        <option value="Tech & Repair">Tech &amp; Repair</option>
+        <option value="Construction & Welding">Construction &amp; Welding</option>
+        <option value="Legal & Notary">Legal &amp; Notary</option>
+        <option value="Event & Catering">Event &amp; Catering</option>
+      </select>
+      <button class="btn-outline" id="resetFiltersBtn">Reset Filters</button>
+    </section>
+
+    <!-- Live Map -->
+    <section class="map-card">
+      <div class="map-header">
+        <h3>Live Provider Map</h3>
+        <button class="btn-outline btn-sm" id="locateMeBtn">Use My Location</button>
+      </div>
+      <div id="map"></div>
+    </section>
+
+    <!-- Contacts Directory -->
+    <section>
+      <div class="section-title">
+        <h3>Directory Listings</h3>
+        <span class="count-label" id="countLabel">Loading...</span>
+      </div>
+      <div class="grid" id="contactsGrid"></div>
+    </section>
+  </main>
+
+  <!-- Add / Edit Contact Modal -->
+  <div class="modal-backdrop" id="contactModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="contactModalTitle">
+      <div class="modal-header">
+        <h3 id="contactModalTitle">Add Verified Contact</h3>
+        <button class="btn-outline btn-sm" data-close="contactModal">✕</button>
+      </div>
+      <form id="contactForm">
+        <input type="hidden" id="contactId" />
+        <div class="form-grid">
+          <div>
+            <label for="nameInput">Business / Provider Name *</label>
+            <input type="text" id="nameInput" required placeholder="e.g., Lagos Grid Solar Works" />
+          </div>
+          <div>
+            <label for="countryInput">Country *</label>
+            <select id="countryInput" required>
+              <option value="Nigeria">Nigeria</option>
+              <option value="Ghana">Ghana</option>
+              <option value="Kenya">Kenya</option>
+              <option value="South Africa">South Africa</option>
+              <option value="Rwanda">Rwanda</option>
+              <option value="Ethiopia">Ethiopia</option>
+              <option value="Tanzania">Tanzania</option>
+              <option value="Uganda">Uganda</option>
+              <option value="Egypt">Egypt</option>
+              <option value="Morocco">Morocco</option>
+              <option value="Senegal">Senegal</option>
+              <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+              <option value="Botswana">Botswana</option>
+              <option value="Zambia">Zambia</option>
+              <option value="Cameroon">Cameroon</option>
+            </select>
+          </div>
+          <div>
+            <label for="tradeInput">Trade / Category *</label>
+            <input type="text" id="tradeInput" list="tradeSuggestions" required placeholder="e.g., Solar & Inverter" />
+            <datalist id="tradeSuggestions">
+              <option value="Electrician"></option>
+              <option value="Plumber"></option>
+              <option value="Solar & Inverter"></option>
+              <option value="Generator & AC Repair"></option>
+              <option value="Emergency & Medical"></option>
+              <option value="Health & Pharmacy"></option>
+              <option value="Security & Towing"></option>
+              <option value="Logistics & Dispatch"></option>
+              <option value="Mechanic"></option>
+              <option value="Tech & Repair"></option>
+              <option value="Construction & Welding"></option>
+              <option value="Legal & Notary"></option>
+              <option value="Event & Catering"></option>
+            </datalist>
+          </div>
+          <div>
+            <label for="areaInput">City / Area *</label>
+            <input type="text" id="areaInput" required placeholder="e.g., Ikeja, Lagos" />
+          </div>
+          <div>
+            <label for="phoneInput">Phone / WhatsApp *</label>
+            <input type="tel" id="phoneInput" required placeholder="e.g., 2348012345678" />
+          </div>
+          <div>
+            <label for="emailInput">Owner Email</label>
+            <input type="email" id="emailInput" placeholder="provider@example.com" />
+          </div>
+          <div>
+            <label for="priceInput">Starting Price / Call-out</label>
+            <input type="text" id="priceInput" placeholder="e.g., ₦10,000 inspection" />
+          </div>
+          <div>
+            <label for="etaInput">Typical Response / ETA</label>
+            <input type="text" id="etaInput" placeholder="e.g., Within 45 mins" />
+          </div>
+          <div>
+            <label for="latInput">Latitude (optional)</label>
+            <input type="number" step="any" id="latInput" placeholder="e.g., 6.6018" />
+          </div>
+          <div>
+            <label for="lngInput">Longitude (optional)</label>
+            <input type="number" step="any" id="lngInput" placeholder="e.g., 3.3515" />
+          </div>
+          <div class="form-full">
+            <label for="descInput">Service Description</label>
+            <textarea id="descInput" rows="3" placeholder="Describe services, coverage, and hours..."></textarea>
+          </div>
+
+          <!-- Paystack Boost & Verification Upgrade -->
+          <div class="boost-box">
+            <h4>Boost &amp; Verification (Paystack)</h4>
+            <p id="boostPricingNote">Highlight your listing on the map &amp; top of search results or request a verified badge review.</p>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <button type="button" class="btn btn-gold btn-sm" id="payFeaturedBtn">Pay to Feature</button>
+              <button type="button" class="btn btn-primary btn-sm" id="payVerifiedBtn">Pay for Verified Badge</button>
+            </div>
+            <div class="boost-status" id="boostStatusText"></div>
+          </div>
+
+          <div class="form-full checkbox-row">
+            <input type="checkbox" id="featuredInput" />
+            <label for="featuredInput" style="margin:0;">Feature this listing</label>
+          </div>
+          <div class="form-full checkbox-row admin-only-field" style="display:none;">
+            <input type="checkbox" id="verifiedInput" />
+            <label for="verifiedInput" style="margin:0;">Mark as Verified (Admin)</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-outline" data-close="contactModal">Cancel</button>
+          <button type="submit" class="btn-primary" id="saveContactBtn">Save Listing</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Emergency SOS Modal -->
+  <div class="modal-backdrop" id="sosModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sosModalTitle">
+      <div class="modal-header">
+        <h3 id="sosModalTitle" style="color:#ff6b68;">Emergency SOS Dispatch</h3>
+        <button class="btn-outline btn-sm" data-close="sosModal">✕</button>
+      </div>
+      <p style="font-size:0.88rem;color:var(--text-muted);margin-bottom:12px;">
+        Send an immediate alert with your location details to NaijaSolve Emergency Dispatch on WhatsApp (<strong>+234 705 417 3485</strong>).
+      </p>
+      <form id="sosForm">
+        <div class="form-grid">
+          <div class="form-full">
+            <label for="sosTypeInput">Emergency Type *</label>
+            <select id="sosTypeInput" required>
+              <option value="Medical Emergency">Medical Emergency</option>
+              <option value="Security / Safety Threat">Security / Safety Threat</option>
+              <option value="Roadside / Accident / Towing">Roadside / Accident / Towing</option>
+              <option value="Fire / Hazard">Fire / Hazard</option>
+              <option value="Other Urgent Assistance">Other Urgent Assistance</option>
+            </select>
+          </div>
+          <div>
+            <label for="sosNameInput">Your Name *</label>
+            <input type="text" id="sosNameInput" required placeholder="Your name" />
+          </div>
+          <div>
+            <label for="sosPhoneInput">Your Callback Number *</label>
+            <input type="tel" id="sosPhoneInput" required placeholder="e.g., 080..." />
+          </div>
+          <div class="form-full">
+            <label for="sosLocationInput">Location / Landmark *</label>
+            <input type="text" id="sosLocationInput" required placeholder="Street, area, city, or GPS coordinates" />
+          </div>
+          <div class="form-full">
+            <label for="sosNotesInput">Situation Details</label>
+            <textarea id="sosNotesInput" rows="2" placeholder="Briefly describe what is needed..."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn-outline" id="sosGpsBtn">Attach GPS</button>
+          <button type="submit" class="btn-sos">Send WhatsApp SOS</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Admin Passcode Modal -->
+  <div class="modal-backdrop" id="adminModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="adminModalTitle">
+      <div class="modal-header">
+        <h3 id="adminModalTitle">Admin Mode</h3>
+        <button class="btn-outline btn-sm" data-close="adminModal">✕</button>
+      </div>
+      <p style="font-size:0.86rem;color:var(--text-muted);margin-bottom:12px;">
+        Enter your admin passcode to verify listings, edit entries, or delete records.
+      </p>
+      <form id="adminForm">
+        <label for="adminPassInput">Admin Passcode</label>
+        <input type="password" id="adminPassInput" required placeholder="Enter admin passcode" />
+        <div class="modal-footer">
+          <button type="button" class="btn-outline" data-close="adminModal">Cancel</button>
+          <button type="submit" class="btn-primary">Unlock Admin</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Supabase JS, Leaflet JS & Paystack Inline JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script src="https://js.paystack.co/v1/inline.js"></script>
+
+  <script>
+    // =========================================================================
+    // CONFIGURATION — WIRED FOR NAIJASOLVE AFRICA
+    // =========================================================================
+    const SUPABASE_URL = "https://umriwiydxenhnniwqfjr.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_GE_T3vP7ETwOgKT3-qzfpA_S6MtNvhm";
+    const ADMIN_WHATSAPP = "2347054173485";
+    const ADMIN_PASSCODE = "081441";
+
+    // Paystack Public Key (pk_test_... or pk_live_...) & NGN fee amounts
+    const PAYSTACK_PUBLIC_KEY = "pk_test_0b76e9ddafe00793e4a8c0cb3bc7725685a29377";
+    const FEATURED_FEE_NGN = 5000;
+    const VERIFIED_FEE_NGN = 10000;
+
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+    // =========================================================================
+    // STATE & MAP INIT
+    // =========================================================================
+    let contacts = [];
+    let isAdmin = false;
+    let paidFeatured = false;
+    let paidVerifiedRef = "";
+    let map;
+    let markersLayer;
+
+    document.getElementById("payFeaturedBtn").textContent = `Feature (₦${FEATURED_FEE_NGN.toLocaleString()})`;
+    document.getElementById("payVerifiedBtn").textContent = `Verify (₦${VERIFIED_FEE_NGN.toLocaleString()})`;
+    document.getElementById("boostPricingNote").textContent =
+      `Feature boost: ₦${FEATURED_FEE_NGN.toLocaleString()} · Verified badge review: ₦${VERIFIED_FEE_NGN.toLocaleString()} (NGN via Paystack).`;
+
+    function initMap() {
+      map = L.map("map").setView([6.5244, 3.3792], 6);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors",
+        maxZoom: 19
+      }).addTo(map);
+      markersLayer = L.layerGroup().addTo(map);
+    }
+
+    function hasValidCoords(item) {
+      if (item.lat === null || item.lat === "" || item.lng === null || item.lng === "") return false;
+      return Number.isFinite(Number(item.lat)) && Number.isFinite(Number(item.lng));
+    }
+
+    function renderMapMarkers(list) {
+      if (!markersLayer) return;
+      markersLayer.clearLayers();
+
+      const coords = [];
+      list.forEach((item) => {
+        if (hasValidCoords(item)) {
+          const lat = Number(item.lat);
+          const lng = Number(item.lng);
+          const marker = L.marker([lat, lng]).bindPopup(`
+            <div style="color:#111;min-width:175px;">
+              <strong>${escapeHtml(item.name)}</strong><br/>
+              <span>${escapeHtml(item.trade)} · ${escapeHtml(item.area)}</span><br/>
+              <small>${item.verified ? "Verified" : "Unverified"}${item.price ? " · " + escapeHtml(item.price) : ""}</small><br/>
+              <a href="tel:${escapeAttr(item.phone)}" style="color:#007a3d;font-weight:700;">Call ${escapeHtml(item.phone)}</a>
+            </div>
+          `);
+          markersLayer.addLayer(marker);
+          coords.push([lat, lng]);
+        }
+      });
+
+      if (coords.length === 1) {
+        map.setView(coords[0], 11);
+      } else if (coords.length > 1) {
+        map.fitBounds(coords, { padding: [30, 30], maxZoom: 12 });
+      }
+    }
+
+    // =========================================================================
+    // SUPABASE CRUD & REALTIME
+    // =========================================================================
+    function setDbStatus(online, text) {
+      const dot = document.getElementById("dbDot");
+      const label = document.getElementById("dbStatusText");
+      dot.classList.toggle("online", online);
+      label.textContent = text;
+    }
+
+    async function loadContacts() {
+      setDbStatus(false, "Syncing with Supabase...");
+      const { data, error } = await db
+        .from("contacts")
+        .select("*")
+        .order("featured", { ascending: false })
+        .order("verified", { ascending: false })
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading contacts:", error);
+        setDbStatus(false, "Database connection error");
+        document.getElementById("contactsGrid").innerHTML = `
+          <div class="empty-state">
+            Could not load contacts (${escapeHtml(error.message)}). Check that RLS policies are active on <code>public.contacts</code>.
+          </div>
+        `;
+        return;
+      }
+
+      contacts = data || [];
+      setDbStatus(true, `Connected · ${contacts.length} listing${contacts.length === 1 ? "" : "s"}`);
+      applyFiltersAndRender();
+    }
+
+    function subscribeRealtime() {
+      db.channel("public-contacts-live")
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "contacts" },
+          () => {
+            loadContacts();
+          }
+        )
+        .subscribe();
+    }
+
+    // =========================================================================
+    // FILTERING & RENDERING
+    // =========================================================================
+    function getFilteredContacts() {
+      const q = document.getElementById("searchInput").value.trim().toLowerCase();
+      const country = document.getElementById("countryFilter").value;
+      const trade = document.getElementById("tradeFilter").value;
+
+      return contacts.filter((c) => {
+        const matchesCountry = !country || c.country === country;
+        const matchesTrade = !trade || (c.trade && c.trade.toLowerCase().includes(trade.toLowerCase()));
+        const matchesQuery =
+          !q ||
+          [c.name, c.trade, c.area, c.country, c.description]
+            .filter(Boolean)
+            .some((field) => field.toLowerCase().includes(q));
+        return matchesCountry && matchesTrade && matchesQuery;
+      });
+    }
+
+    function applyFiltersAndRender() {
+      const filtered = getFilteredContacts();
+      const grid = document.getElementById("contactsGrid");
+      const countLabel = document.getElementById("countLabel");
+
+      countLabel.textContent = `Showing ${filtered.length} of ${contacts.length}`;
+      renderMapMarkers(filtered);
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="empty-state">
+            No matching contacts found. Try clearing your filters or click <strong>+ List Service</strong> to add a provider.
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered
+        .map((c) => {
+          const cleanPhone = (c.phone || "").replace(/[^\d+]/g, "");
+          const waPhone = cleanPhone.replace(/^\+/, "");
+          const waMessage = encodeURIComponent(
+            `Hello ${c.name}, I found your listing on NaijaSolve Africa (${c.trade} in ${c.area}).`
+          );
+          const coordsAvailable = hasValidCoords(c);
+
+          return `
+            <article class="card">
+              <div>
+                <div class="card-top">
+                  <div>
+                    <div class="card-title">${escapeHtml(c.name)}</div>
+                    <div class="card-meta">${escapeHtml(c.trade)} · ${escapeHtml(c.area)}, ${escapeHtml(c.country)}</div>
+                  </div>
+                  <div class="badges">
+                    ${c.verified ? `<span class="badge badge-verified">Verified</span>` : ""}
+                    ${c.featured ? `<span class="badge badge-featured">Featured</span>` : ""}
+                  </div>
+                </div>
+
+                ${c.description ? `<p class="card-desc" style="margin-top:10px;">${escapeHtml(c.description)}</p>` : ""}
+
+                <div class="card-specs" style="margin-top:10px;">
+                  ${c.price ? `<span><strong>Rate:</strong> ${escapeHtml(c.price)}</span>` : ""}
+                  ${c.eta ? `<span><strong>ETA:</strong> ${escapeHtml(c.eta)}</span>` : ""}
+                </div>
+              </div>
+
+              <div>
+                <div class="card-actions">
+                  <a class="btn btn-primary btn-sm" href="tel:${escapeAttr(cleanPhone)}">Call</a>
+                  <a class="btn btn-outline btn-sm" target="_blank" rel="noopener" href="https://wa.me/${escapeAttr(waPhone)}?text=${waMessage}">WhatsApp</a>
+                  <button type="button" class="btn btn-outline btn-sm" data-action="copy" data-phone="${escapeAttr(c.phone || "")}">Copy #</button>
+                  <button type="button" class="btn btn-outline btn-sm" data-action="share" data-id="${escapeAttr(c.id)}">Share</button>
+                  ${
+                    coordsAvailable
+                      ? `<button type="button" class="btn btn-outline btn-sm" data-action="map" data-lat="${escapeAttr(c.lat)}" data-lng="${escapeAttr(c.lng)}">Map</button>`
+                      : ""
+                  }
+                </div>
+
+                <div class="admin-controls">
+                  <button type="button" class="btn btn-gold btn-sm" data-action="verify" data-id="${escapeAttr(c.id)}" data-next-verified="${!c.verified}">
+                    ${c.verified ? "Unverify" : "Verify"}
+                  </button>
+                  <button type="button" class="btn btn-outline btn-sm" data-action="edit" data-id="${escapeAttr(c.id)}">Edit</button>
+                  <button type="button" class="btn btn-sos btn-sm" data-action="delete" data-id="${escapeAttr(c.id)}">Delete</button>
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+    }
+
+    document.getElementById("contactsGrid").addEventListener("click", async (e) => {
+      const btn = e.target.closest("button[data-action]");
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      if (action === "copy") {
+        const phone = btn.dataset.phone || "";
+        try {
+          await navigator.clipboard.writeText(phone);
+          const prev = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(() => (btn.textContent = prev), 1400);
+        } catch {
+          alert("Phone number: " + phone);
+        }
+      } else if (action === "share") {
+        const item = contacts.find((c) => String(c.id) === String(btn.dataset.id));
+        if (!item) return;
+        const shareText = `${item.name} (${item.trade} in ${item.area}, ${item.country}) — Phone: ${item.phone}`;
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: `${item.name} — NaijaSolve Africa`, text: shareText, url: window.location.href });
+            return;
+          } catch {
+            // Fallback to clipboard
+          }
+        }
+        try {
+          await navigator.clipboard.writeText(shareText);
+          alert("Listing details copied to clipboard.");
+        } catch {
+          alert(shareText);
+        }
+      } else if (action === "map") {
+        if (!map) return;
+        map.setView([Number(btn.dataset.lat), Number(btn.dataset.lng)], 14);
+        document.querySelector(".map-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      } else if (action === "verify") {
+        if (!isAdmin) return;
+        const nextVerified = btn.dataset.nextVerified === "true";
+        const { error } = await db.from("contacts").update({ verified: nextVerified }).eq("id", btn.dataset.id);
+        if (error) {
+          alert("Update failed: " + error.message);
+          return;
+        }
+        await loadContacts();
+      } else if (action === "edit") {
+        const item = contacts.find((c) => String(c.id) === String(btn.dataset.id));
+        if (!item) return;
+        paidFeatured = false;
+        paidVerifiedRef = "";
+        document.getElementById("boostStatusText").textContent = "";
+        document.getElementById("contactId").value = item.id;
+        document.getElementById("nameInput").value = item.name || "";
+        document.getElementById("countryInput").value = item.country || "Nigeria";
+        document.getElementById("tradeInput").value = item.trade || "";
+        document.getElementById("areaInput").value = item.area || "";
+        document.getElementById("phoneInput").value = item.phone || "";
+        document.getElementById("emailInput").value = item.owner_email || "";
+        document.getElementById("priceInput").value = item.price || "";
+        document.getElementById("etaInput").value = item.eta || "";
+        document.getElementById("latInput").value = item.lat ?? "";
+        document.getElementById("lngInput").value = item.lng ?? "";
+        document.getElementById("descInput").value = item.description || "";
+        document.getElementById("featuredInput").checked = Boolean(item.featured);
+        document.getElementById("verifiedInput").checked = Boolean(item.verified);
+        document.querySelector(".admin-only-field").style.display = isAdmin ? "flex" : "none";
+        document.getElementById("contactModalTitle").textContent = "Edit Service Listing";
+        openModal("contactModal");
+      } else if (action === "delete") {
+        if (!isAdmin) return;
+        if (!confirm("Delete this contact listing permanently?")) return;
+        const { error } = await db.from("contacts").delete().eq("id", btn.dataset.id);
+        if (error) {
+          alert("Delete failed: " + error.message);
+          return;
+        }
+        await loadContacts();
+      }
+    });
+
+    // =========================================================================
+    // PAYSTACK CHECKOUT FOR FEATURED & VERIFIED BADGES
+    // =========================================================================
+    function startPaystackBoost(mode) {
+      const name = document.getElementById("nameInput").value.trim() || "Service Provider";
+      const email = document.getElementById("emailInput").value.trim() || "provider@naijasolve.africa";
+      const amountNgn = mode === "verified" ? VERIFIED_FEE_NGN : FEATURED_FEE_NGN;
+      const statusEl = document.getElementById("boostStatusText");
+
+      if (!PAYSTACK_PUBLIC_KEY) {
+        statusEl.textContent = "Add your PAYSTACK_PUBLIC_KEY in the script to launch live Paystack payments.";
+        alert("Set PAYSTACK_PUBLIC_KEY in the script first to process live Paystack checkouts.");
+        return;
+      }
+
+      if (typeof PaystackPop === "undefined") {
+        alert("Paystack checkout script did not load. Check your internet connection.");
+        return;
+      }
+
+      const handler = PaystackPop.setup({
+        key: PAYSTACK_PUBLIC_KEY,
+        email,
+        amount: amountNgn * 100,
+        currency: "NGN",
+        ref: `NS_${mode.toUpperCase()}_${Date.now()}`,
+        metadata: {
+          custom_fields: [
+            { display_name: "Provider Name", variable_name: "provider_name", value: name },
+            { display_name: "Upgrade Type", variable_name: "upgrade_type", value: mode }
+          ]
+        },
+        callback: function (response) {
+          if (mode === "featured") {
+            paidFeatured = true;
+            document.getElementById("featuredInput").checked = true;
+            statusEl.textContent = `Featured payment confirmed (Ref: ${response.reference}).`;
+          } else {
+            paidVerifiedRef = response.reference;
+            statusEl.textContent = `Verification payment confirmed (Ref: ${response.reference}). Admin will verify after review.`;
+          }
+        },
+        onClose: function () {
+          statusEl.textContent = "Payment window closed before completion.";
+        }
+      });
+
+      handler.openIframe();
+    }
+
+    document.getElementById("payFeaturedBtn").addEventListener("click", () => startPaystackBoost("featured"));
+    document.getElementById("payVerifiedBtn").addEventListener("click", () => startPaystackBoost("verified"));
+
+    // =========================================================================
+    // FORM HANDLERS (ADD, EDIT, VERIFY, DELETE)
+    // =========================================================================
+    function openAddModal() {
+      paidFeatured = false;
+      paidVerifiedRef = "";
+      document.getElementById("boostStatusText").textContent = "";
+      document.getElementById("contactForm").reset();
+      document.getElementById("contactId").value = "";
+      document.getElementById("contactModalTitle").textContent = "Add Service Listing";
+      document.querySelector(".admin-only-field").style.display = isAdmin ? "flex" : "none";
+      openModal("contactModal");
+    }
+
+    document.getElementById("contactForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const id = document.getElementById("contactId").value;
+      const latRaw = document.getElementById("latInput").value.trim();
+      const lngRaw = document.getElementById("lngInput").value.trim();
+      const name = document.getElementById("nameInput").value.trim();
+      const trade = document.getElementById("tradeInput").value.trim();
+      const area = document.getElementById("areaInput").value.trim();
+      const phone = document.getElementById("phoneInput").value.trim();
+
+      const payload = {
+        name,
+        country: document.getElementById("countryInput").value,
+        trade,
+        area,
+        phone,
+        owner_email: document.getElementById("emailInput").value.trim(),
+        price: document.getElementById("priceInput").value.trim(),
+        eta: document.getElementById("etaInput").value.trim(),
+        lat: latRaw === "" ? null : Number(latRaw),
+        lng: lngRaw === "" ? null : Number(lngRaw),
+        description: document.getElementById("descInput").value.trim(),
+        featured: document.getElementById("featuredInput").checked || paidFeatured
+      };
+
+      if (isAdmin) {
+        payload.verified = document.getElementById("verifiedInput").checked || Boolean(paidVerifiedRef);
+      } else if (!id) {
+        payload.verified = false;
+      }
+
+      const saveBtn = document.getElementById("saveContactBtn");
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+
+      const query = id
+        ? db.from("contacts").update(payload).eq("id", id)
+        : db.from("contacts").insert([payload]);
+
+      const { error } = await query;
+
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save Listing";
+
+      if (error) {
+        alert("Could not save listing: " + error.message);
+        return;
+      }
+
+      if (paidVerifiedRef && !isAdmin) {
+        const waVerifyNote = encodeURIComponent(
+          `Paid Verification Request (Ref: ${paidVerifiedRef}) for ${name} (${trade}, ${area}, ${phone}).`
+        );
+        window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${waVerifyNote}`, "_blank", "noopener");
+      }
+
+      closeModal("contactModal");
+      await loadContacts();
+    });
+
+    // =========================================================================
+    // EMERGENCY SOS DISPATCH
+    // =========================================================================
+    document.getElementById("sosGpsBtn").addEventListener("click", () => {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported on this browser.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const locField = document.getElementById("sosLocationInput");
+          const gpsText = `GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} (https://maps.google.com/?q=${latitude},${longitude})`;
+          locField.value = locField.value ? `${locField.value} — ${gpsText}` : gpsText;
+        },
+        () => alert("Could not fetch GPS location. Please type your area or landmark.")
+      );
+    });
+
+    document.getElementById("sosForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const type = document.getElementById("sosTypeInput").value;
+      const name = document.getElementById("sosNameInput").value.trim();
+      const phone = document.getElementById("sosPhoneInput").value.trim();
+      const location = document.getElementById("sosLocationInput").value.trim();
+      const notes = document.getElementById("sosNotesInput").value.trim();
+
+      const msg = [
+        "*EMERGENCY SOS — NAIJASOLVE AFRICA*",
+        `Type: ${type}`,
+        `Name: ${name}`,
+        `Callback: ${phone}`,
+        `Location: ${location}`,
+        notes ? `Details: ${notes}` : ""
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const url = `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(msg)}`;
+      window.open(url, "_blank", "noopener");
+      closeModal("sosModal");
+    });
+
+    // =========================================================================
+    // ADMIN MODE & LOCATION HELPER
+    // =========================================================================
+    document.getElementById("adminToggleBtn").addEventListener("click", () => {
+      if (isAdmin) {
+        isAdmin = false;
+        document.body.classList.remove("admin-mode");
+        document.getElementById("adminToggleBtn").textContent = "Admin";
+        applyFiltersAndRender();
+      } else {
+        document.getElementById("adminPassInput").value = "";
+        openModal("adminModal");
+      }
+    });
+
+    document.getElementById("adminForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const code = document.getElementById("adminPassInput").value;
+      if (code === ADMIN_PASSCODE) {
+        isAdmin = true;
+        document.body.classList.add("admin-mode");
+        document.getElementById("adminToggleBtn").textContent = "Admin (Unlocked)";
+        closeModal("adminModal");
+        applyFiltersAndRender();
+      } else {
+        alert("Incorrect admin passcode.");
+      }
+    });
+
+    document.getElementById("locateMeBtn").addEventListener("click", () => {
+      if (!navigator.geolocation || !map) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 13),
+        () => alert("Location permission denied or unavailable.")
+      );
+    });
+
+    // =========================================================================
+    // MODALS, FILTERS & UTILITIES
+    // =========================================================================
+    function openModal(id) {
+      document.getElementById(id).classList.add("open");
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.remove("open");
+    }
+
+    document.getElementById("openAddBtn").addEventListener("click", openAddModal);
+    document.getElementById("openSosBtn").addEventListener("click", () => openModal("sosModal"));
+
+    document.querySelectorAll("[data-close]").forEach((btn) => {
+      btn.addEventListener("click", () => closeModal(btn.getAttribute("data-close")));
+    });
+
+    document.querySelectorAll(".modal-backdrop").forEach((backdrop) => {
+      backdrop.addEventListener("click", (e) => {
+        if (e.target === backdrop) backdrop.classList.remove("open");
+      });
+    });
+
+    document.getElementById("searchInput").addEventListener("input", applyFiltersAndRender);
+    document.getElementById("countryFilter").addEventListener("change", applyFiltersAndRender);
+    document.getElementById("tradeFilter").addEventListener("change", applyFiltersAndRender);
+    document.getElementById("resetFiltersBtn").addEventListener("click", () => {
+      document.getElementById("searchInput").value = "";
+      document.getElementById("countryFilter").value = "";
+      document.getElementById("tradeFilter").value = "";
+      applyFiltersAndRender();
+    });
+
+    function escapeHtml(str) {
+      if (str == null) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function escapeAttr(str) {
+      return escapeHtml(str);
+    }
+
+    // Boot
+    initMap();
+    loadContacts();
+    subscribeRealtime();
+  </script>
+</body>
+</html>
