@@ -531,7 +531,220 @@
         <button class="btn-primary" id="openAddBtn">+ List Service</button>
         <button class="btn-sos" id="openSosBtn">Emergency SOS</button>
         <button class="btn-outline" id="adminToggleBtn">Admin</button>
+    <!-- 1. Header Auth Button (Place next to + List Service / Admin) -->
+<div id="authHeaderBar" style="display:flex; gap:8px; align-items:center;">
+  <button id="openAuthBtn" type="button"
+    style="background:#14532d; color:#fff; border:1px solid #22c55e; padding:10px 14px; border-radius:10px; font-weight:600; cursor:pointer;">
+    Sign In / Sign Up
+  </button>
+  <span id="userBadge" style="display:none; color:#86efac; font-size:13px; font-weight:600;"></span>
+  <button id="signOutBtn" type="button"
+    style="display:none; background:#1f2937; color:#f87171; border:1px solid #374151; padding:8px 12px; border-radius:10px; font-size:13px; cursor:pointer;">
+    Sign Out
+  </button>
+</div>
+
+<!-- 2. Auth Modal (Email OR Phone Choice) -->
+<div id="authModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:#0b140e; border:1px solid #1f3a29; border-radius:16px; width:100%; max-width:400px; padding:20px; color:#f3f4f6;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+      <h3 id="authModalTitle" style="margin:0; font-size:18px;">Create Account</h3>
+      <button id="closeAuthBtn" type="button" style="background:none; border:none; color:#9ca3af; font-size:22px; cursor:pointer;">&times;</button>
+    </div>
+
+    <!-- Mode Switch: Create Account vs Sign In -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; background:#060b08; padding:4px; border-radius:10px; margin-bottom:12px;">
+      <button id="tabSignUp" type="button" style="background:#16a34a; color:#fff; border:none; padding:8px; border-radius:8px; font-weight:600; cursor:pointer;">Create Account</button>
+      <button id="tabSignIn" type="button" style="background:transparent; color:#9ca3af; border:none; padding:8px; border-radius:8px; font-weight:600; cursor:pointer;">Sign In</button>
+    </div>
+
+    <!-- Method Switch: Email vs Phone -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:14px;">
+      <button id="methodEmailBtn" type="button" style="background:#14532d; color:#fff; border:1px solid #22c55e; padding:8px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Use Email</button>
+      <button id="methodPhoneBtn" type="button" style="background:#111c15; color:#9ca3af; border:1px solid #1f3a29; padding:8px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer;">Use Phone</button>
+    </div>
+
+    <form id="authForm" style="display:flex; flex-direction:column; gap:12px;">
+      <div id="nameFieldWrap">
+        <label style="display:block; font-size:12px; color:#9ca3af; margin-bottom:4px;">Full Name or Business Name</label>
+        <input id="authFullName" type="text" placeholder="e.g., Chinedu Solar Works"
+          style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #1f3a29; background:#060b08; color:#fff;" />
       </div>
+
+      <div id="emailFieldWrap">
+        <label style="display:block; font-size:12px; color:#9ca3af; margin-bottom:4px;">Email Address *</label>
+        <input id="authEmail" type="email" placeholder="you@example.com"
+          style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #1f3a29; background:#060b08; color:#fff;" />
+      </div>
+
+      <div id="phoneFieldWrap" style="display:none;">
+        <label style="display:block; font-size:12px; color:#9ca3af; margin-bottom:4px;">Phone Number (with Country Code) *</label>
+        <input id="authPhone" type="tel" placeholder="e.g., 2348012345678"
+          style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #1f3a29; background:#060b08; color:#fff;" />
+      </div>
+
+      <div>
+        <label style="display:block; font-size:12px; color:#9ca3af; margin-bottom:4px;">Password (min 6 chars) *</label>
+        <input id="authPassword" type="password" required minlength="6" placeholder="••••••••"
+          style="width:100%; box-sizing:border-box; padding:10px; border-radius:8px; border:1px solid #1f3a29; background:#060b08; color:#fff;" />
+      </div>
+
+      <p id="authFeedback" style="margin:0; font-size:13px; color:#f87171; display:none;"></p>
+
+      <button id="authSubmitBtn" type="submit"
+        style="background:#16a34a; color:#fff; border:none; padding:12px; border-radius:10px; font-weight:700; font-size:15px; cursor:pointer;">
+        Create Account
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- 3. Auth Logic (Assumes `supabase` client is already initialized on the page) -->
+<script>
+  (function () {
+    let authMode = 'signup';   // 'signup' | 'signin'
+    let authMethod = 'email';  // 'email' | 'phone'
+
+    const modal = document.getElementById('authModal');
+    const openBtn = document.getElementById('openAuthBtn');
+    const closeBtn = document.getElementById('closeAuthBtn');
+    const signOutBtn = document.getElementById('signOutBtn');
+    const userBadge = document.getElementById('userBadge');
+
+    const tabSignUp = document.getElementById('tabSignUp');
+    const tabSignIn = document.getElementById('tabSignIn');
+    const methodEmailBtn = document.getElementById('methodEmailBtn');
+    const methodPhoneBtn = document.getElementById('methodPhoneBtn');
+
+    const nameWrap = document.getElementById('nameFieldWrap');
+    const emailWrap = document.getElementById('emailFieldWrap');
+    const phoneWrap = document.getElementById('phoneFieldWrap');
+    const titleEl = document.getElementById('authModalTitle');
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const feedbackEl = document.getElementById('authFeedback');
+
+    function showFeedback(msg, isError = true) {
+      feedbackEl.textContent = msg;
+      feedbackEl.style.color = isError ? '#f87171' : '#4ade80';
+      feedbackEl.style.display = 'block';
+    }
+
+    function updateTabs() {
+      const isSignUp = authMode === 'signup';
+      titleEl.textContent = isSignUp ? 'Create Account' : 'Sign In';
+      submitBtn.textContent = isSignUp ? 'Create Account' : 'Sign In';
+      nameWrap.style.display = isSignUp ? 'block' : 'none';
+
+      tabSignUp.style.background = isSignUp ? '#16a34a' : 'transparent';
+      tabSignUp.style.color = isSignUp ? '#fff' : '#9ca3af';
+      tabSignIn.style.background = !isSignUp ? '#16a34a' : 'transparent';
+      tabSignIn.style.color = !isSignUp ? '#fff' : '#9ca3af';
+
+      const isEmail = authMethod === 'email';
+      emailWrap.style.display = isEmail ? 'block' : 'none';
+      phoneWrap.style.display = !isEmail ? 'block' : 'none';
+
+      methodEmailBtn.style.background = isEmail ? '#14532d' : '#111c15';
+      methodEmailBtn.style.color = isEmail ? '#fff' : '#9ca3af';
+      methodEmailBtn.style.borderColor = isEmail ? '#22c55e' : '#1f3a29';
+
+      methodPhoneBtn.style.background = !isEmail ? '#14532d' : '#111c15';
+      methodPhoneBtn.style.color = !isEmail ? '#fff' : '#9ca3af';
+      methodPhoneBtn.style.borderColor = !isEmail ? '#22c55e' : '#1f3a29';
+      feedbackEl.style.display = 'none';
+    }
+
+    openBtn.onclick = () => { modal.style.display = 'flex'; updateTabs(); };
+    closeBtn.onclick = () => { modal.style.display = 'none'; };
+    tabSignUp.onclick = () => { authMode = 'signup'; updateTabs(); };
+    tabSignIn.onclick = () => { authMode = 'signin'; updateTabs(); };
+    methodEmailBtn.onclick = () => { authMethod = 'email'; updateTabs(); };
+    methodPhoneBtn.onclick = () => { authMethod = 'phone'; updateTabs(); };
+
+    function phoneToAliasEmail(rawPhone) {
+      const digits = rawPhone.replace(/\D/g, '');
+      if (digits.length < 8) return null;
+      return `${digits}@phone.naijasolve.com`;
+    }
+
+    async function refreshUserUI() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const display = user.user_metadata?.phone || user.user_metadata?.full_name || user.email;
+        userBadge.textContent = `Hi, ${display}`;
+        userBadge.style.display = 'inline';
+        signOutBtn.style.display = 'inline-block';
+        openBtn.style.display = 'none';
+      } else {
+        userBadge.style.display = 'none';
+        signOutBtn.style.display = 'none';
+        openBtn.style.display = 'inline-block';
+      }
+    }
+
+    signOutBtn.onclick = async () => {
+      await supabase.auth.signOut();
+      refreshUserUI();
+    };
+
+    document.getElementById('authForm').onsubmit = async (e) => {
+      e.preventDefault();
+      feedbackEl.style.display = 'none';
+
+      const password = document.getElementById('authPassword').value;
+      const fullName = document.getElementById('authFullName').value.trim();
+      let email = '';
+      let rawPhone = '';
+
+      if (authMethod === 'email') {
+        email = document.getElementById('authEmail').value.trim();
+        if (!email) return showFeedback('Please enter your email address.');
+      } else {
+        rawPhone = document.getElementById('authPhone').value.trim();
+        email = phoneToAliasEmail(rawPhone);
+        if (!email) return showFeedback('Please enter a valid phone number with country code (e.g., 2348012345678).');
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Please wait...';
+
+      try {
+        if (authMode === 'signup') {
+          const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: fullName,
+                phone: rawPhone || null,
+                signup_method: authMethod
+              }
+            }
+          });
+          if (error) throw error;
+          showFeedback('Account created! You are signed in.', false);
+        } else {
+          const { error } = await supabase.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+          showFeedback('Signed in successfully!', false);
+        }
+
+        await refreshUserUI();
+        setTimeout(() => { modal.style.display = 'none'; }, 700);
+      } catch (err) {
+        showFeedback(err.message || 'Authentication failed.');
+      } finally {
+        submitBtn.disabled = false;
+        updateTabs();
+      }
+    };
+
+    refreshUserUI();
+  })();
+</script>
+  
+      
+    </div>
     </div>
   </header>
 
